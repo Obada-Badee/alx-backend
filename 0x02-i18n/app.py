@@ -3,7 +3,9 @@
 A basic Flask app
 """
 from flask import Flask, render_template, request, g
-from flask_babel import Babel
+from flask_babel import Babel, format_datetime
+from pytz import timezone
+import pytz
 
 users = {
     1: {"name": "Balou", "locale": "fr", "timezone": "Europe/Paris"},
@@ -49,7 +51,35 @@ def get_locale():
     return request.accept_languages.best_match(app.config['LANGUAGES'])
 
 
+@babel.timezone_selector
+def get_timezone():
+    """
+    function
+    Select and return appropriate timezone
+    """
+    # Find timezone parameter in URL parameters
+    tzone = request.args.get('timezone', None)
+    if tzone:
+        try:
+            return timezone(tzone).zone
+        except pytz.exceptions.UnknownTimeZoneError:
+            pass
+
+    # Find time zone from user settings
+    if g.user:
+        try:
+            tzone = g.user.get('timezone')
+            return timezone(tzone).zone
+        except pytz.exceptions.UnknownTimeZoneError:
+            pass
+
+    # Default to UTC
+    default_tz = app.config['BABEL_DEFAULT_TIMEZONE']
+    return default_tz
+
+
 @app.route('/')
 def index() -> str:
     """Display a simple html page"""
-    return render_template('6-index.html', user=g.user)
+    return render_template('index.html', user=g.user,
+                           current_time=format_datetime())
